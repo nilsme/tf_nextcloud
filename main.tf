@@ -363,6 +363,10 @@ resource "aws_s3_bucket" "bucket_nextcloud" {
     }
   }
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   tags = {
       Name = "Nextcloud bucket"
       Nextcloud = "main_storage"
