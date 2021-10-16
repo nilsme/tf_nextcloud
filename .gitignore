@@ -1,0 +1,6 @@
+# Ignore terraform folder, lock and state files
+.terraform*
+terraform.tfstate*
+
+# Ignore assigned variables
+terraform.tfvars
