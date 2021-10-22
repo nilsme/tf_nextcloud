@@ -4,9 +4,8 @@
 
 ## Requirements
 
-- terraform CLI
-- aws CLI
-- Route 53 hosted zone (domain)
+- terraform CLI (download: <https://www.terraform.io/downloads.html>)
+- Route 53 hosted zone (available domain)
 
 ## Set variables
 
@@ -21,8 +20,6 @@ admin_user = ""
 admin_pass = ""
 default_user = ""
 default_user_pass = ""
-aws_key = ""
-aws_secret = ""
 ```
 
 > Password needs to be at least 10 characters long and special
@@ -49,5 +46,5 @@ terraform apply
 ## Terraform destroy
 
 ```Shell script
-terraform apply -destroy
+terraform destroy
 ```

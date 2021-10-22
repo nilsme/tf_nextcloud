@@ -1,6 +1,10 @@
 # Ignore terraform folder, lock and state files
+.terraform
 .terraform*
 terraform.tfstate*
 
 # Ignore assigned variables
 terraform.tfvars
+
+# Ignore PyCharm studd
+.idea

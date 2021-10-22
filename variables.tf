@@ -55,12 +55,8 @@ variable "bucket_name" {
   type = string
 }
 
-variable "aws_key" {
-  description = "Key for access to S3"
+variable "s3_user" {
+  description = "User for S3 access"
   type = string
-}
-
-variable "aws_secret" {
-  description = "Secret for access to S3"
-  type = string
+  default = "nextcloud-s3-user"
 }

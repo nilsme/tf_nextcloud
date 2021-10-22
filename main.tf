@@ -112,7 +112,6 @@ resource "aws_lb" "nextcloud-elb" {
   security_groups = [
     aws_security_group.nextcloud-sg-elb.id
     ]
-
   tags = {
     Name = "nextcloud elb"
   }
@@ -275,69 +274,33 @@ resource "aws_instance" "ec2_nextcloud" {
   subnet_id = aws_subnet.private.id
   associate_public_ip_address = true
   vpc_security_group_ids = [
-    aws_security_group.nextcloud-allow-elb.id,
+    aws_security_group.nextcloud-allow-elb.id
   ]
-  
-  user_data = <<-EOF
-  #!/bin/bash
-
-  # Update ubuntu and install nextcloud snap
-  apt update && apt upgrade
-  snap install nextcloud
-
-  # Install nextcloud and configure admin user
-  nextcloud.manual-install ${var.admin_user} ${var.admin_pass}
-  
-  # Configure nextcloud port
-  snap set nextcloud ports.http=${var.nextcloud_port}
-
-  # Configure trusted domain
-  nextcloud.occ config:system:set trusted_domains 1 --value=${var.a_record}
-  
-  # Configure apps
-  nextcloud.occ app:disable dashboard
-  nextcloud.occ app:disable text
-  nextcloud.occ app:enable files_external
-  nextcloud.occ app:install files_markdown
-  nextcloud.occ app:install files_texteditor
-  nextcloud.occ app:install contacts
-  nextcloud.occ app:install calendar
-  nextcloud.occ app:install deck
-  nextcloud.occ app:install tasks
-
-  # Add group user
-  nextcloud.occ group:add user
-
-  # Create default user and add to group user
-  export OC_PASS=${var.default_user_pass}
-  nextcloud.occ user:add \
-    --password-from-env \
-    --display-name="${var.default_user}" \
-    --group="user" \
-    ${var.default_user}
-
-  # Configure S3 bucket
-  nextcloud.occ files_external:create "AmazonS3" amazons3 amazons3::accesskey
-  nextcloud.occ files_external:config 1 bucket "${var.bucket_name}"
-  nextcloud.occ files_external:config 1 region "${var.aws_region}"
-  nextcloud.occ files_external:config 1 use_ssl true
-  nextcloud.occ files_external:config 1 key "${var.aws_key}"
-  nextcloud.occ files_external:config 1 secret "${var.aws_secret}"
-  nextcloud.occ files_external:applicable 1 --add-user "${var.default_user}"
-
-  # Stop and start all services
-  snap stop nextcloud
-  snap start nextcloud
-  EOF
-  
+  user_data = templatefile("user_data.sh", {
+    admin_user = var.admin_user
+    admin_pass = var.admin_pass
+    nextcloud_port = var.nextcloud_port
+    a_record = var.a_record
+    default_user = var.default_user
+    default_user_pass = var.default_user_pass
+    bucket_name = var.bucket_name
+    aws_region = var.aws_region
+    nextcloud_s3_user_id = aws_iam_access_key.nextcloud_s3_user.id
+    nextcloud_s3_user_secret = aws_iam_access_key.nextcloud_s3_user.secret
+  })
   tags = {
     Name = "Nextcloud EC2"
     Nextcloud = "ec2"
     }
-  
   depends_on = [
-    aws_s3_bucket.bucket_nextcloud
+    aws_s3_bucket.bucket_nextcloud,
+    aws_iam_access_key.nextcloud_s3_user
   ]
+}
+
+# Enable encryption for all EBS volumes by default
+resource "aws_ebs_encryption_by_default" "enabled" {
+  enabled = true
 }
 
 
@@ -363,10 +326,6 @@ resource "aws_s3_bucket" "bucket_nextcloud" {
     }
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
-
   tags = {
       Name = "Nextcloud bucket"
       Nextcloud = "main_storage"
@@ -376,9 +335,32 @@ resource "aws_s3_bucket" "bucket_nextcloud" {
 # Block all public access to S3 bucket
 resource "aws_s3_bucket_public_access_block" "block_bucket" {
   bucket = aws_s3_bucket.bucket_nextcloud.id
-
   block_public_acls = true
   block_public_policy = true
   ignore_public_acls = true
   restrict_public_buckets = true
+}
+
+
+# User for S3 access -------------------------------------------------------- #
+
+# Create IAM user
+resource "aws_iam_user" "nextcloud_s3_user" {
+  name = var.s3_user
+}
+# Create access keys for IAM user
+resource "aws_iam_access_key" "nextcloud_s3_user" {
+  user = aws_iam_user.nextcloud_s3_user.name
+}
+
+# Attach policy for S3 and encryption keys
+resource "aws_iam_user_policy" "s3_policy" {
+  name = "nextcloud-s3-policy"
+  user = var.s3_user
+  policy = templatefile("policy.json", {
+    bucket_name = var.bucket_name
+  })
+  depends_on = [
+    aws_iam_user.nextcloud_s3_user
+  ]
 }
