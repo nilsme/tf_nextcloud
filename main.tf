@@ -6,68 +6,63 @@ provider "aws" {
 # Network ------------------------------------------------------------------- #
 
 # Create a VPC
-resource "aws_vpc" "vpc_nextcloud" {
+resource "aws_vpc" "vpc" {
   cidr_block = "10.0.0.0/16"
   enable_dns_support = true
   enable_dns_hostnames = true
   tags = {
-    Name = "Nextcloud VPC"
-    Nextcloud = "vpc"
+    Name = format("%s VPC", var.project)
     }
 }
 
 # Create a public subnet 1
 resource "aws_subnet" "public" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
   cidr_block = "10.0.1.0/24"
   availability_zone = format("%sc", var.aws_region)
   tags = {
-    Name = "Nextcloud public subnet"
-    Nextcloud = "public subnet"
+    Name = format("%s public subnet", var.project)
     }
 }
 
 # Create a public subnet 2
 resource "aws_subnet" "public2" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
   cidr_block = "10.0.3.0/24"
   availability_zone = format("%sb", var.aws_region)
   tags = {
-    Name = "Nextcloud public subnet 2"
-    Nextcloud = "public subnet 2"
+    Name = format("%s public subnet 2", var.project)
     }
 }
 
 # Create a private subnet
 resource "aws_subnet" "private" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
   cidr_block = "10.0.2.0/24"
   availability_zone = format("%sc", var.aws_region)
   tags = {
-    Name = "Nextcloud private subnet"
-    Nextcloud = "private subnet"
+    Name = format("%s private subnet", var.project)
     }
 }
 
 # Create a private subnet 2
 resource "aws_subnet" "private2" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
   cidr_block = "10.0.4.0/24"
   availability_zone = format("%sb", var.aws_region)
   tags = {
-    Name = "Nextcloud private subnet 2"
-    Nextcloud = "private subnet 2"
+    Name = format("%s private subnet 2", var.project)
     }
 }
 
 # Create internet gateway
 resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
 }
 
 # Create route table for public subnet
 resource "aws_route_table" "public_rt" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -82,8 +77,8 @@ resource "aws_route_table_association" "public_route_assoc" {
 }
 
 # Create route table for private subnet
-resource "aws_route_table" "private-rt" {
-  vpc_id = aws_vpc.vpc_nextcloud.id
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -92,17 +87,17 @@ resource "aws_route_table" "private-rt" {
 }
 
 # Associate route table for private subnet
-resource "aws_route_table_association" "private-route-assoc" {
+resource "aws_route_table_association" "private_route_assoc" {
   subnet_id = aws_subnet.private.id
-  route_table_id = aws_route_table.private-rt.id
+  route_table_id = aws_route_table.private_rt.id
 }
 
 
 # Load balancer with ssl ---------------------------------------------------- #
 
 # Create a new load balancer
-resource "aws_lb" "nextcloud-elb" {
-  name = "nextcloud-elb"
+resource "aws_lb" "nextcloud_elb" {
+  # name = "nextcloud-elb"
   internal = false
   load_balancer_type = "application"
   subnets = [
@@ -110,19 +105,19 @@ resource "aws_lb" "nextcloud-elb" {
     aws_subnet.public2.id
     ]
   security_groups = [
-    aws_security_group.nextcloud-sg-elb.id
+    aws_security_group.sg_elb.id
     ]
   tags = {
-    Name = "nextcloud elb"
+    Name = format("%s ELB", var.project)
   }
 }
 
 # Create a target group for load balancer
-resource "aws_lb_target_group" "nextcloud-tg" {
-  name = "nextcloud-tg"
+resource "aws_lb_target_group" "nextcloud_tg" {
+  # name = "nextcloud-tg"
   port = var.nextcloud_port
   protocol = "HTTP"
-  vpc_id = aws_vpc.vpc_nextcloud.id
+  vpc_id = aws_vpc.vpc.id
   
   health_check {
     path = "/"
@@ -132,20 +127,20 @@ resource "aws_lb_target_group" "nextcloud-tg" {
   }
 
   tags = {
-    Name = "nextcloud tg"
+    Name = format("%s Target Group", var.project)
   }
 }
 
 # Attach instance to target group
-resource "aws_lb_target_group_attachment" "nextcloud-tg-attach" {
-  target_group_arn = aws_lb_target_group.nextcloud-tg.arn
+resource "aws_lb_target_group_attachment" "nextcloud_tg_attach" {
+  target_group_arn = aws_lb_target_group.nextcloud_tg.arn
   target_id        = aws_instance.ec2_nextcloud.id
   port             = var.nextcloud_port
 }
 
 # Create a listener for port 443
 resource "aws_lb_listener" "webserver" {
-  load_balancer_arn = aws_lb.nextcloud-elb.arn
+  load_balancer_arn = aws_lb.nextcloud_elb.arn
   port = "443"
   protocol = "HTTPS"
   ssl_policy = "ELBSecurityPolicy-2016-08"
@@ -153,13 +148,13 @@ resource "aws_lb_listener" "webserver" {
 
   default_action {
     type = "forward"
-    target_group_arn = aws_lb_target_group.nextcloud-tg.arn
+    target_group_arn = aws_lb_target_group.nextcloud_tg.arn
   }
 }
 
 # Create a redirect for port 80
-resource "aws_lb_listener" "front_end_http" {
-  load_balancer_arn = aws_lb.nextcloud-elb.arn
+resource "aws_lb_listener" "webserver_http" {
+  load_balancer_arn = aws_lb.nextcloud_elb.arn
   port              = "80"
   protocol          = "HTTP"
 
@@ -175,14 +170,14 @@ resource "aws_lb_listener" "front_end_http" {
 }
 
 # Set DNS routing policy
-resource "aws_route53_record" "cloud" {
+resource "aws_route53_record" "a_record" {
   zone_id = var.route53_zone
   name = var.a_record
   type = "A"
 
   alias {
-    name = aws_lb.nextcloud-elb.dns_name
-    zone_id = aws_lb.nextcloud-elb.zone_id
+    name = aws_lb.nextcloud_elb.dns_name
+    zone_id = aws_lb.nextcloud_elb.zone_id
     evaluate_target_health = false
   }
 }
@@ -190,9 +185,9 @@ resource "aws_route53_record" "cloud" {
 
 # Security groups ----------------------------------------------------------- #
 
-resource "aws_security_group" "nextcloud-allow-ssh" {
-  name = "nextcloud-allow-ssh"
-  vpc_id = aws_vpc.vpc_nextcloud.id
+resource "aws_security_group" "allow_ssh" {
+  # name = "nextcloud-allow-ssh"
+  vpc_id = aws_vpc.vpc.id
 
   ingress {
     from_port = 22
@@ -207,11 +202,15 @@ resource "aws_security_group" "nextcloud-allow-ssh" {
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = format("%s SG Allow SSH", var.project)
+  }
 }
 
-resource "aws_security_group" "nextcloud-sg-elb" {
-  name = "nextcloud-sg-elb"
-  vpc_id = aws_vpc.vpc_nextcloud.id
+resource "aws_security_group" "sg_elb" {
+  # name = "nextcloud-sg-elb"
+  vpc_id = aws_vpc.vpc.id
 
   ingress {
     from_port = 80
@@ -243,17 +242,21 @@ resource "aws_security_group" "nextcloud-sg-elb" {
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+    tags = {
+    Name = format("%s SG Load Balancer", var.project)
+  }
 }
 
-resource "aws_security_group" "nextcloud-allow-elb" {
-  name = "nextcloud-allow-elb"
-  vpc_id = aws_vpc.vpc_nextcloud.id
+resource "aws_security_group" "allow_elb" {
+  # name = "nextcloud-allow-elb"
+  vpc_id = aws_vpc.vpc.id
 
   ingress {
     from_port = var.nextcloud_port
     to_port = var.nextcloud_port
     protocol = "tcp"
-    security_groups = [aws_security_group.nextcloud-sg-elb.id]
+    security_groups = [aws_security_group.sg_elb.id]
   }
 
   egress {
@@ -261,6 +264,10 @@ resource "aws_security_group" "nextcloud-allow-elb" {
     to_port = 0
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = format("%s SG Allow Load Balancer", var.project)
   }
 }
 
@@ -274,7 +281,7 @@ resource "aws_instance" "ec2_nextcloud" {
   subnet_id = aws_subnet.private.id
   associate_public_ip_address = true
   vpc_security_group_ids = [
-    aws_security_group.nextcloud-allow-elb.id
+    aws_security_group.allow_elb.id
   ]
   user_data = templatefile("user_data.sh", {
     admin_user = var.admin_user
@@ -285,16 +292,15 @@ resource "aws_instance" "ec2_nextcloud" {
     default_user_pass = var.default_user_pass
     bucket_name = var.bucket_name
     aws_region = var.aws_region
-    nextcloud_s3_user_id = aws_iam_access_key.nextcloud_s3_user.id
-    nextcloud_s3_user_secret = aws_iam_access_key.nextcloud_s3_user.secret
+    nextcloud_s3_user_id = aws_iam_access_key.s3_user.id
+    nextcloud_s3_user_secret = aws_iam_access_key.s3_user.secret
   })
   tags = {
-    Name = "Nextcloud EC2"
-    Nextcloud = "ec2"
-    }
+    Name = format("%s EC2", var.project)
+  }
   depends_on = [
     aws_s3_bucket.bucket_nextcloud,
-    aws_iam_access_key.nextcloud_s3_user
+    aws_iam_access_key.s3_user
   ]
 }
 
@@ -307,7 +313,7 @@ resource "aws_ebs_encryption_by_default" "enabled" {
 # S3 for main storage ------------------------------------------------------- #
 
 # Key for bucket encryption
-resource "aws_kms_key" "mykey" {
+resource "aws_kms_key" "key" {
   description  = "This key is used to encrypt bucket objects"
   deletion_window_in_days = 10
 }
@@ -320,15 +326,14 @@ resource "aws_s3_bucket" "bucket_nextcloud" {
   server_side_encryption_configuration {
     rule {
       apply_server_side_encryption_by_default {
-        kms_master_key_id = aws_kms_key.mykey.arn
+        kms_master_key_id = aws_kms_key.key.arn
         sse_algorithm = "aws:kms"
       }
     }
   }
 
   tags = {
-      Name = "Nextcloud bucket"
-      Nextcloud = "main_storage"
+    Name = format("%s Bucket", var.project)
   }
 }
 
@@ -345,12 +350,15 @@ resource "aws_s3_bucket_public_access_block" "block_bucket" {
 # User for S3 access -------------------------------------------------------- #
 
 # Create IAM user
-resource "aws_iam_user" "nextcloud_s3_user" {
+resource "aws_iam_user" "s3_user" {
   name = var.s3_user
+  tags = {
+    Name = format("%s S3 User", var.project)
+  }
 }
 # Create access keys for IAM user
-resource "aws_iam_access_key" "nextcloud_s3_user" {
-  user = aws_iam_user.nextcloud_s3_user.name
+resource "aws_iam_access_key" "s3_user" {
+  user = aws_iam_user.s3_user.name
 }
 
 # Attach policy for S3 and encryption keys
@@ -361,6 +369,6 @@ resource "aws_iam_user_policy" "s3_policy" {
     bucket_name = var.bucket_name
   })
   depends_on = [
-    aws_iam_user.nextcloud_s3_user
+    aws_iam_user.s3_user
   ]
 }

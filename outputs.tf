@@ -1,5 +1,5 @@
 output "load_balancer_dns" {
-  value = format("https://%s", aws_lb.nextcloud-elb.dns_name)
+  value = format("https://%s", aws_lb.nextcloud_elb.dns_name)
 }
 
 output "nextcloud_url" {

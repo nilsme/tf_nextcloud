@@ -3,6 +3,12 @@ variable "aws_region" {
   type = string
 }
 
+variable "project" {
+  description = "Name of the project to be used for generic components"
+  type = string
+  default = "Nextcloud"
+}
+
 variable "nextcloud_port" {
   description = "Port for nextcloud webserver"
   type = number
