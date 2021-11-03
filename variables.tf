@@ -66,3 +66,19 @@ variable "s3_user" {
   type = string
   default = "nextcloud-s3-user"
 }
+
+variable "mariadb_port" {
+  description = "Port for MariaDB"
+  type = number
+  default = 3306
+}
+
+variable "mariadb_user" {
+  description = "Master DB user for MariaDB"
+  type = string
+}
+
+variable "mariadb_pass" {
+  description = "Password for master DB user for MariaDB"
+  type = string
+}

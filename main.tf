@@ -231,8 +231,8 @@ resource "aws_security_group" "sg_elb" {
     to_port = var.nextcloud_port
     protocol = "tcp"
     cidr_blocks = [
-     aws_subnet.private.cidr_block,
-     aws_subnet.private2.cidr_block
+     aws_subnet.public.cidr_block,
+     aws_subnet.public2.cidr_block
       ]
   }
 
@@ -271,6 +271,94 @@ resource "aws_security_group" "allow_elb" {
   }
 }
 
+resource "aws_security_group" "rds" {
+  name = format("%s SG RDS", var.project)
+  vpc_id = aws_vpc.vpc.id
+
+  ingress {
+    from_port = var.mariadb_port
+    to_port = var.mariadb_port
+    protocol = "tcp"
+    cidr_blocks = [
+      aws_subnet.public.cidr_block,
+      aws_subnet.public2.cidr_block
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+    tags = {
+    Name = format("%s SG RDS", var.project)
+  }
+}
+
+resource "aws_security_group" "allow_rds" {
+  name = format("%s SG Allow RDS", var.project)
+  vpc_id = aws_vpc.vpc.id
+
+  ingress {
+    from_port = var.mariadb_port
+    to_port = var.mariadb_port
+    protocol = "tcp"
+    cidr_blocks = [
+      aws_subnet.private.cidr_block,
+      aws_subnet.private2.cidr_block
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+    tags = {
+    Name = format("%s SG Allows RDS", var.project)
+  }
+}
+
+
+# RDS database -------------------------------------------------------------- #
+
+# Create subnet group for database
+resource "aws_db_subnet_group" "private" {
+  # name = "nextcloud-db-subnet-group"
+  subnet_ids = [
+    aws_subnet.private.id,
+    aws_subnet.private2.id
+  ]
+  tags = {
+    Name = format("%s DB subnet group", var.project)
+  }
+}
+
+# Create a MariaDB for Nextcloud
+resource "aws_db_instance" "db_nextcloud" {
+  db_subnet_group_name = aws_db_subnet_group.private.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  allocated_storage = 10
+  storage_type = "gp2"
+  engine = "MariaDB"
+  instance_class = "db.t3.micro"
+  name = "nextcloud"
+  username = var.mariadb_user
+  password = var.mariadb_pass
+  port = var.mariadb_port
+  publicly_accessible = false
+  skip_final_snapshot = true
+  deletion_protection = false
+
+  tags = {
+    Name = format("%s MariaDB", var.project)
+  }
+}
+
 
 # EC2 instance -------------------------------------------------------------- #
 
@@ -278,27 +366,34 @@ resource "aws_security_group" "allow_elb" {
 resource "aws_instance" "ec2_nextcloud" {
   ami = var.ami
   instance_type = "t3.micro"
-  subnet_id = aws_subnet.private.id
+  subnet_id = aws_subnet.public.id
   associate_public_ip_address = true
   vpc_security_group_ids = [
-    aws_security_group.allow_elb.id
+    aws_security_group.allow_elb.id,
+    aws_security_group.allow_rds.id
   ]
   user_data = templatefile("user_data.sh", {
     admin_user = var.admin_user
     admin_pass = var.admin_pass
     nextcloud_port = var.nextcloud_port
     a_record = var.a_record
+    trusted_lb = aws_lb.nextcloud_elb.dns_name
     default_user = var.default_user
     default_user_pass = var.default_user_pass
     bucket_name = var.bucket_name
     aws_region = var.aws_region
     nextcloud_s3_user_id = aws_iam_access_key.s3_user.id
     nextcloud_s3_user_secret = aws_iam_access_key.s3_user.secret
+    mariadb_host = aws_db_instance.db_nextcloud.address
+    mariadb_port = var.mariadb_port
+    mariadb_user = var.mariadb_user
+    mariadb_pass = var.mariadb_pass
   })
   tags = {
     Name = format("%s EC2", var.project)
   }
   depends_on = [
+    aws_db_instance.db_nextcloud,
     aws_s3_bucket.bucket_nextcloud,
     aws_iam_access_key.s3_user
   ]

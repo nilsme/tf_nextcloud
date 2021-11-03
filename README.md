@@ -4,8 +4,6 @@
 
 - Web-traffic and ssl connection to Nextcloud is handled by an
   `Application Load Balancer`, which needs two configured `Availability Zones`.
-- Nextcloud `EC2 Instance` has direct internet access to load applications and
-  updates. (Better solution includes `NAT Gateway` in `Public Subnet`.)
 - Primary storage for Nextcloud is an encrypted `S3 Bucket` that is
   automatically created by terraform.
 - Nextcloud also uses encryption while storing files.
@@ -33,6 +31,8 @@ admin_user = ""
 admin_pass = ""
 default_user = ""
 default_user_pass = ""
+mariadb_user = ""
+mariadb_pass = ""
 ```
 
 - `route53_zone` excepts an `arn` of a hosted zone by `Route 53`.

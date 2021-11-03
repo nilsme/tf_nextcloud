@@ -1,17 +1,44 @@
 #!/bin/bash
 
 # Update ubuntu and install nextcloud snap
-apt update && apt upgrade
+apt update && apt --yes upgrade
 snap install nextcloud
 
-# Install nextcloud and configure admin user
-nextcloud.manual-install "${admin_user}" "${admin_pass}"
+# Create data directory for manual install and set rights
+mkdir /var/snap/nextcloud/common/nextcloud/data
+chmod 770 /var/snap/nextcloud/common/nextcloud/data
+
+# Install Nextcloud, configure MariaDB and set admin user
+nextcloud.occ maintenance:install \
+--database "mysql" \
+--database-name "nextcloud"  \
+--database-host "${mariadb_host}" \
+--database-port "${mariadb_port}" \
+--database-user "${mariadb_user}" \
+--database-pass "${mariadb_pass}" \
+--admin-user "${admin_user}" \
+--admin-pass "${admin_pass}" \
+--data-dir "/var/snap/nextcloud/common/nextcloud/data"
+
+# Configure S3 as primary storage
+nextcloud.occ config:system:set objectstore class --value=\\OC\\Files\\ObjectStore\\S3
+nextcloud.occ config:system:set objectstore arguments bucket --value="${bucket_name}"
+nextcloud.occ config:system:set objectstore arguments autocreate --value=true --type=boolean
+nextcloud.occ config:system:set objectstore arguments key --value="${nextcloud_s3_user_id}"
+nextcloud.occ config:system:set objectstore arguments secret --value="${nextcloud_s3_user_secret}"
+nextcloud.occ config:system:set objectstore arguments use_ssl --value=true --type=boolean
+nextcloud.occ config:system:set objectstore arguments region --value="${aws_region}"
+nextcloud.occ config:system:set objectstore arguments use_path_style --value=false --type=boolean
+
+# Enforce https protocol
+nextcloud.occ config:system:set overwriteprotocol --value=https
 
 # Configure nextcloud port
 snap set nextcloud ports.http="${nextcloud_port}"
 
 # Configure trusted domain
 nextcloud.occ config:system:set trusted_domains 1 --value="${a_record}"
+nextcloud.occ config:system:set trusted_domains 2 --value="${trusted_lb}"
 
 # Configure apps
 nextcloud.occ app:disable dashboard
@@ -27,27 +54,6 @@ nextcloud.occ app:install tasks
 
 # Enable encryption
 nextcloud.occ encryption:enable
-
-# Configure S3 as primary storage
-## Remove last line of config.php
-sed -i '$ d' /var/snap/nextcloud/current/nextcloud/config/config.php
-## Append config for S3 and closing bracket
-cat >> /var/snap/nextcloud/current/nextcloud/config/config.php <<EOF
-'objectstore' => [
-        'class' => '\\\OC\\\Files\\\ObjectStore\\\S3',
-        'arguments' => [
-                'bucket' => '${bucket_name}',
-                'autocreate' => true,
-                'key'    => '${nextcloud_s3_user_id}',
-                'secret' => '${nextcloud_s3_user_secret}',
-                'use_ssl' => true,
-                'region' => '${aws_region}',
-                'use_path_style'=>false
-        ],
-],
-'overwriteprotocol' => 'https',
-);
-EOF
 
 # Add group user
 nextcloud.occ group:add user
