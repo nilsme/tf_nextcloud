@@ -10,15 +10,15 @@ chmod 770 /var/snap/nextcloud/common/nextcloud/data
 
 # Install Nextcloud, configure MariaDB and set admin user
 nextcloud.occ maintenance:install \
---database "mysql" \
---database-name "nextcloud"  \
---database-host "${mariadb_host}" \
---database-port "${mariadb_port}" \
---database-user "${mariadb_user}" \
---database-pass "${mariadb_pass}" \
---admin-user "${admin_user}" \
---admin-pass "${admin_pass}" \
---data-dir "/var/snap/nextcloud/common/nextcloud/data"
+  --database "mysql" \
+  --database-name "nextcloud"  \
+  --database-host "${mariadb_host}" \
+  --database-port "${mariadb_port}" \
+  --database-user "${mariadb_user}" \
+  --database-pass "${mariadb_pass}" \
+  --admin-user "${admin_user}" \
+  --admin-pass "${admin_pass}" \
+  --data-dir "/var/snap/nextcloud/common/nextcloud/data"
 
 # Configure S3 as primary storage
 nextcloud.occ config:system:set objectstore class --value=\\OC\\Files\\ObjectStore\\S3
@@ -61,10 +61,10 @@ nextcloud.occ group:add user
 # Create default user and add to group user
 export OC_PASS=${default_user_pass}
 nextcloud.occ user:add \
---password-from-env \
---display-name="${default_user}" \
---group="user" \
-"${default_user}"
+  --password-from-env \
+  --display-name="${default_user}" \
+  --group="user" \
+  "${default_user}"
 
 # Stop and start all services
 snap stop nextcloud
