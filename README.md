@@ -1,6 +1,18 @@
 # README
 
-> Nextcloud deployment on AWS with terraform.
+> Nextcloud deployment on AWS with terraform.  
+
+- Web-traffic and ssl connection to Nextcloud is handled by an
+  `Application Load Balancer`, which needs two configured `Availability Zones`.
+- Nextcloud `EC2 Instance` has direct internet access to load applications and
+  updates. (Better solution includes `NAT Gateway` in `Public Subnet`.)
+- Primary storage for Nextcloud is an encrypted `S3 Bucket` that is
+  automatically created by terraform.
+- Nextcloud also uses encryption while storing files.
+- Backup needs to include Nextcloud database, encryption keys and `S3 Bucket`
+  contents.
+
+![current_architecture](current.png)
 
 ## Requirements
 
@@ -47,4 +59,15 @@ terraform apply
 
 ```Shell script
 terraform destroy
+```
+
+## Troubleshooting
+
+### S3 bucket is not destroyed
+
+Use the command AWS command line tool to empty the bucket, if Terraform
+complains about a non-empty bucket during destruction.
+
+```Shell script
+aws s3 rm s3://bucket-name --recursive
 ```

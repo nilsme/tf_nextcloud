@@ -17,12 +17,37 @@ nextcloud.occ config:system:set trusted_domains 1 --value="${a_record}"
 nextcloud.occ app:disable dashboard
 nextcloud.occ app:disable text
 nextcloud.occ app:enable files_external
+nextcloud.occ app:enable encryption
 nextcloud.occ app:install files_markdown
 nextcloud.occ app:install files_texteditor
 nextcloud.occ app:install contacts
 nextcloud.occ app:install calendar
 nextcloud.occ app:install deck
 nextcloud.occ app:install tasks
+
+# Enable encryption
+nextcloud.occ encryption:enable
+
+# Configure S3 as primary storage
+## Remove last line of config.php
+sed -i '$ d' /var/snap/nextcloud/current/nextcloud/config/config.php
+## Append config for S3 and closing bracket
+cat >> /var/snap/nextcloud/current/nextcloud/config/config.php <<EOF
+'objectstore' => [
+        'class' => '\\\OC\\\Files\\\ObjectStore\\\S3',
+        'arguments' => [
+                'bucket' => '${bucket_name}',
+                'autocreate' => true,
+                'key'    => '${nextcloud_s3_user_id}',
+                'secret' => '${nextcloud_s3_user_secret}',
+                'use_ssl' => true,
+                'region' => '${aws_region}',
+                'use_path_style'=>false
+        ],
+],
+'overwriteprotocol' => 'https',
+);
+EOF
 
 # Add group user
 nextcloud.occ group:add user
@@ -34,15 +59,6 @@ nextcloud.occ user:add \
 --display-name="${default_user}" \
 --group="user" \
 "${default_user}"
-
-# Configure S3 bucket
-nextcloud.occ files_external:create "AmazonS3" amazons3 amazons3::accesskey
-nextcloud.occ files_external:config 1 bucket "${bucket_name}"
-nextcloud.occ files_external:config 1 region "${aws_region}"
-nextcloud.occ files_external:config 1 use_ssl true
-nextcloud.occ files_external:config 1 key "${nextcloud_s3_user_id}"
-nextcloud.occ files_external:config 1 secret "${nextcloud_s3_user_secret}"
-nextcloud.occ files_external:applicable 1 --add-user "${default_user}"
 
 # Stop and start all services
 snap stop nextcloud

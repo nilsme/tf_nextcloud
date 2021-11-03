@@ -97,7 +97,7 @@ resource "aws_route_table_association" "private_route_assoc" {
 
 # Create a new load balancer
 resource "aws_lb" "nextcloud_elb" {
-  # name = "nextcloud-elb"
+  name = format("%s-ELB", var.project)
   internal = false
   load_balancer_type = "application"
   subnets = [
@@ -114,7 +114,7 @@ resource "aws_lb" "nextcloud_elb" {
 
 # Create a target group for load balancer
 resource "aws_lb_target_group" "nextcloud_tg" {
-  # name = "nextcloud-tg"
+  name = format("%s-Target-Group", var.project)
   port = var.nextcloud_port
   protocol = "HTTP"
   vpc_id = aws_vpc.vpc.id
@@ -186,7 +186,7 @@ resource "aws_route53_record" "a_record" {
 # Security groups ----------------------------------------------------------- #
 
 resource "aws_security_group" "allow_ssh" {
-  # name = "nextcloud-allow-ssh"
+  name = format("%s SG Allow SSH", var.project)
   vpc_id = aws_vpc.vpc.id
 
   ingress {
@@ -209,7 +209,7 @@ resource "aws_security_group" "allow_ssh" {
 }
 
 resource "aws_security_group" "sg_elb" {
-  # name = "nextcloud-sg-elb"
+  name = format("%s SG Load Balancer", var.project)
   vpc_id = aws_vpc.vpc.id
 
   ingress {
@@ -249,7 +249,7 @@ resource "aws_security_group" "sg_elb" {
 }
 
 resource "aws_security_group" "allow_elb" {
-  # name = "nextcloud-allow-elb"
+  name = format("%s SG Allow Load Balancer", var.project)
   vpc_id = aws_vpc.vpc.id
 
   ingress {
@@ -321,6 +321,7 @@ resource "aws_kms_key" "key" {
 # Create a S3 bucket for main storage
 resource "aws_s3_bucket" "bucket_nextcloud" {
   bucket = var.bucket_name
+  force_destroy = true
   acl = "private"
 
   server_side_encryption_configuration {
