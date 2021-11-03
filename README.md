@@ -34,8 +34,10 @@ default_user = ""
 default_user_pass = ""
 ```
 
-> Password needs to be at least 10 characters long and special
-> characters must be escaped.
+- `ssl_certs` excepts an `arn` of a ssl certificate for the Nextcloud domain
+  that is managed by `AWS Certificate Manager`.
+- Passwords need to be at least 10 characters long and special characters must
+  be escaped.
 
 ## Terraform init
 
