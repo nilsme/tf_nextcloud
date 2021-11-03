@@ -17,7 +17,8 @@
 ## Requirements
 
 - terraform CLI (download: <https://www.terraform.io/downloads.html>)
-- Route 53 hosted zone (available domain)
+- `Route 53` hosted zone (available domain)
+- ssl certificate managed by `AWS Certificate Manager`
 
 ## Set variables
 
@@ -34,6 +35,8 @@ default_user = ""
 default_user_pass = ""
 ```
 
+- `route53_zone` excepts an `arn` of a hosted zone by `Route 53`.
+- `a_record` is the domain name, e.g. `nextcloud.example.com`.
 - `ssl_certs` excepts an `arn` of a ssl certificate for the Nextcloud domain
   that is managed by `AWS Certificate Manager`.
 - Passwords need to be at least 10 characters long and special characters must
