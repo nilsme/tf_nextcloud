@@ -100,6 +100,7 @@ resource "aws_lb" "nextcloud_elb" {
   name = format("%s-ELB", var.project)
   internal = false
   load_balancer_type = "application"
+  idle_timeout = 60
   subnets = [
     aws_subnet.public.id,
     aws_subnet.public2.id
@@ -340,8 +341,10 @@ resource "aws_db_subnet_group" "private" {
 
 # Create a MariaDB for Nextcloud
 resource "aws_db_instance" "db_nextcloud" {
+  identifier = "nextcloud-db"
   db_subnet_group_name = aws_db_subnet_group.private.name
   vpc_security_group_ids = [aws_security_group.rds.id]
+  multi_az = false
   allocated_storage = 10
   storage_type = "gp2"
   engine = "MariaDB"
@@ -353,6 +356,9 @@ resource "aws_db_instance" "db_nextcloud" {
   publicly_accessible = false
   skip_final_snapshot = true
   deletion_protection = false
+  backup_retention_period = 3
+  backup_window = "03:00-03:30"
+  delete_automated_backups = true
 
   tags = {
     Name = format("%s MariaDB", var.project)

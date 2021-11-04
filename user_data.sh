@@ -38,7 +38,6 @@ snap set nextcloud ports.http="${nextcloud_port}"
 
 # Configure trusted domain
 nextcloud.occ config:system:set trusted_domains 1 --value="${a_record}"
-nextcloud.occ config:system:set trusted_domains 2 --value="${trusted_lb}"
 
 # Configure apps
 nextcloud.occ app:disable dashboard
@@ -69,3 +68,6 @@ nextcloud.occ user:add \
 # Stop and start all services
 snap stop nextcloud
 snap start nextcloud
+
+# Reboot system
+reboot --now
