@@ -56,6 +56,12 @@ variable "default_user_pass" {
   type = string
 }
 
+variable "default_quota" {
+  description = "Default quota in GB for default user"
+  type = number
+  default = 20
+}
+
 variable "bucket_name" {
   description = "Name of S3 bucket for storage"
   type = string

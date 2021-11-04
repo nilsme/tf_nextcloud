@@ -43,7 +43,7 @@ nextcloud.occ config:system:set trusted_domains 1 --value="${a_record}"
 nextcloud.occ app:disable dashboard
 nextcloud.occ app:disable text
 nextcloud.occ app:enable files_external
-nextcloud.occ app:enable encryption
+# nextcloud.occ app:enable encryption # Causes problems with object storage.
 nextcloud.occ app:install files_markdown
 nextcloud.occ app:install files_texteditor
 nextcloud.occ app:install contacts
@@ -52,7 +52,7 @@ nextcloud.occ app:install deck
 nextcloud.occ app:install tasks
 
 # Enable encryption
-nextcloud.occ encryption:enable
+# nextcloud.occ encryption:enable # Causes problems with object storage.
 
 # Add group user
 nextcloud.occ group:add user
@@ -64,6 +64,9 @@ nextcloud.occ user:add \
   --display-name="${default_user}" \
   --group="user" \
   "${default_user}"
+
+# Set quota for default user
+nextcloud.occ user:setting "${default_user}" files quota "${default_quota}"GB
 
 # Stop and start all services
 snap stop nextcloud

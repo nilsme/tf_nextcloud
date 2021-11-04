@@ -386,6 +386,7 @@ resource "aws_instance" "ec2_nextcloud" {
     trusted_lb = aws_lb.nextcloud_elb.dns_name
     default_user = var.default_user
     default_user_pass = var.default_user_pass
+    default_quota = var.default_quota
     bucket_name = var.bucket_name
     aws_region = var.aws_region
     nextcloud_s3_user_id = aws_iam_access_key.s3_user.id
