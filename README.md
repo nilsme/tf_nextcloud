@@ -6,8 +6,9 @@
   `Application Load Balancer`, which needs two configured `Availability Zones`.
 - Primary storage for Nextcloud is an encrypted `S3 Bucket` that is
   automatically created by Terraform.
-- Nextcloud also uses encryption while storing files.
-- Backup needs to include Nextcloud database, `S3 Bucket` contents and
+- A separate MariaDB instance is created with `Amazon RDS` to hold all
+  information on users and files.
+- Backup needs to include Nextcloud config, MariaDB, `S3 Bucket` contents and
   encryption keys.
 
 ![current_architecture](current.png)
