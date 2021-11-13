@@ -142,14 +142,31 @@ resource "aws_lb_target_group_attachment" "nextcloud_tg_attach" {
 # Create a listener for port 443
 resource "aws_lb_listener" "webserver" {
   load_balancer_arn = aws_lb.nextcloud_elb.arn
-  port = "443"
-  protocol = "HTTPS"
-  ssl_policy = "ELBSecurityPolicy-2016-08"
-  certificate_arn = var.ssl_cert
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = var.ssl_cert
 
   default_action {
     type = "forward"
     target_group_arn = aws_lb_target_group.nextcloud_tg.arn
+  }
+}
+
+# Create a listener rule for webserver
+resource "aws_lb_listener_rule" "static" {
+  listener_arn = aws_lb_listener.webserver.arn
+  priority = 100
+
+  action {
+    type = "forward"
+    target_group_arn = aws_lb_target_group.nextcloud_tg.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.a_record]
+    }
   }
 }
 
@@ -166,6 +183,27 @@ resource "aws_lb_listener" "webserver_http" {
       port        = "443"
       protocol    = "HTTPS"
       status_code = "HTTP_301"
+    }
+  }
+}
+
+# Create a listener rule for redirect
+resource "aws_lb_listener_rule" "redirect_http_to_https" {
+  listener_arn = aws_lb_listener.webserver_http.arn
+
+  action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+  condition {
+    http_header {
+      http_header_name = "X-Forwarded-For"
+      values           = [var.a_record]
     }
   }
 }
