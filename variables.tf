@@ -31,9 +31,15 @@ variable "ssl_cert" {
 }
 
 variable "ami" {
-  description = "Ubuntu ami for nextcloud"
+  description = "Ubuntu Server 24.04 LTS ami for nextcloud"
   type = string
-  default = "ami-05f7491af5eef733a"
+  default = "ami-07eef52105e8a2059"
+}
+
+variable "public_key" {
+  description = "Public key for ssh access to vm"
+  type = string
+  default = "~/.ssh/id_rsa.pub"
 }
 
 variable "admin_user" {
