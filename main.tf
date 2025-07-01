@@ -421,7 +421,7 @@ resource "aws_db_instance" "db_nextcloud" {
 # Create an EC2 instance for Nextcloud
 resource "aws_instance" "ec2_nextcloud" {
   ami = var.ami
-  instance_type = "c5.large"
+  instance_type = "t3.micro"
   subnet_id = aws_subnet.public.id
   associate_public_ip_address = true
   vpc_security_group_ids = [
