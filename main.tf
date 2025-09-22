@@ -100,7 +100,7 @@ resource "aws_lb" "nextcloud_elb" {
   name = format("%s-ELB", var.project)
   internal = false
   load_balancer_type = "application"
-  idle_timeout = 60
+  idle_timeout = 240
   subnets = [
     aws_subnet.public.id,
     aws_subnet.public2.id
@@ -121,10 +121,15 @@ resource "aws_lb_target_group" "nextcloud_tg" {
   vpc_id = aws_vpc.vpc.id
   
   health_check {
+    enabled = true
     path = "/"
     protocol = "HTTP"
     port = var.nextcloud_port
-    matcher = "400"
+    matcher = "200,400" # Health check required, but does not work well.
+  }
+
+  target_health_state {
+    enable_unhealthy_connection_termination = false
   }
 
   tags = {
@@ -170,6 +175,8 @@ resource "aws_lb_listener_rule" "static" {
   }
 }
 
+/* 
+
 # Create a redirect for port 80
 resource "aws_lb_listener" "webserver_http" {
   load_balancer_arn = aws_lb.nextcloud_elb.arn
@@ -207,6 +214,8 @@ resource "aws_lb_listener_rule" "redirect_http_to_https" {
     }
   }
 }
+ 
+ */
 
 # Set DNS routing policy
 resource "aws_route53_record" "a_record" {
@@ -224,6 +233,7 @@ resource "aws_route53_record" "a_record" {
 
 # Security groups ----------------------------------------------------------- #
 
+/* Do not allow ssh. 
 resource "aws_security_group" "allow_ssh" {
   name = format("%s SG Allow SSH", var.project)
   vpc_id = aws_vpc.vpc.id
@@ -246,17 +256,20 @@ resource "aws_security_group" "allow_ssh" {
     Name = format("%s SG Allow SSH", var.project)
   }
 }
+ */
 
 resource "aws_security_group" "sg_elb" {
   name = format("%s SG Load Balancer", var.project)
   vpc_id = aws_vpc.vpc.id
 
+/* Do not allow port 80. 
   ingress {
     from_port = 80
     to_port = 80
     protocol = "tcp"
     cidr_blocks = [ "0.0.0.0/0" ]
   }
+ */
 
   ingress {
     from_port = 443
@@ -387,7 +400,6 @@ resource "aws_db_instance" "db_nextcloud" {
   storage_type = "gp2"
   engine = "MariaDB"
   instance_class = "db.t3.micro"
-  name = "nextcloud"
   username = var.mariadb_user
   password = var.mariadb_pass
   port = var.mariadb_port
@@ -416,6 +428,7 @@ resource "aws_instance" "ec2_nextcloud" {
     aws_security_group.allow_elb.id,
     aws_security_group.allow_rds.id
   ]
+  key_name = "nextcloud-key"
   user_data = templatefile("user_data.sh", {
     admin_user = var.admin_user
     admin_pass = var.admin_pass
@@ -434,19 +447,32 @@ resource "aws_instance" "ec2_nextcloud" {
     mariadb_user = var.mariadb_user
     mariadb_pass = var.mariadb_pass
   })
+  user_data_replace_on_change = false
+
   tags = {
     Name = format("%s EC2", var.project)
   }
+  
   depends_on = [
     aws_db_instance.db_nextcloud,
     aws_s3_bucket.bucket_nextcloud,
     aws_iam_access_key.s3_user
   ]
+
 }
 
 # Enable encryption for all EBS volumes by default
 resource "aws_ebs_encryption_by_default" "enabled" {
   enabled = true
+}
+
+resource "aws_key_pair" "ec2_nextcloud_key" {
+  key_name = "nextcloud-key"
+  public_key = file(var.public_key)
+
+  tags = {
+    Name = format("%s EC2 public key", var.project)
+  }
 }
 
 
@@ -462,20 +488,36 @@ resource "aws_kms_key" "key" {
 resource "aws_s3_bucket" "bucket_nextcloud" {
   bucket = var.bucket_name
   force_destroy = true
-  acl = "private"
-
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        kms_master_key_id = aws_kms_key.key.arn
-        sse_algorithm = "aws:kms"
-      }
-    }
-  }
 
   tags = {
     Name = format("%s Bucket", var.project)
   }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_nextcloud_encryption" {
+  bucket = aws_s3_bucket.bucket_nextcloud.id
+  
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.key.arn
+      sse_algorithm = "aws:kms"
+    }
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "bucket_nextcloud_ownership" {
+  bucket = aws_s3_bucket.bucket_nextcloud.id
+  
+  rule {
+    object_ownership = "ObjectWriter"
+  }
+  
+}
+
+resource "aws_s3_bucket_acl" "bucket_nextcloud_acl" {
+  bucket = aws_s3_bucket.bucket_nextcloud.id
+  acl = "private"
+  depends_on = [aws_s3_bucket_ownership_controls.bucket_nextcloud_ownership]
 }
 
 # Block all public access to S3 bucket

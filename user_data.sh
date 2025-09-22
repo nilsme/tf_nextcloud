@@ -41,7 +41,6 @@ nextcloud.occ config:system:set trusted_domains 1 --value="${a_record}"
 
 # Configure apps
 nextcloud.occ app:disable dashboard
-nextcloud.occ app:disable text
 nextcloud.occ app:enable files_external
 # nextcloud.occ app:enable encryption # Causes problems with object storage.
 nextcloud.occ app:install files_markdown

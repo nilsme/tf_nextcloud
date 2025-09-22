@@ -24,9 +24,10 @@
 Create a file `terraform.tfvars` and include the following values as strings.
 
 ```terraform.tfvars
-route53_zone = ""
-a_record = ""
-ssl_cert = ""
+aws_region = ""
+route53_zone = ""            # Hosted zone ID
+a_record = ""                # FQD: cloud.example.com
+ssl_cert = ""                # arn
 bucket_name = ""
 admin_user = ""
 admin_pass = ""
@@ -34,6 +35,7 @@ default_user = ""
 default_user_pass = ""
 mariadb_user = ""
 mariadb_pass = ""
+public_key = ""              # if not default = "~/.ssh/id_rsa.pub"
 ```
 
 - `route53_zone` excepts an `arn` of a hosted zone by `Route 53`.
